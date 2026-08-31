@@ -1,0 +1,80 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: k8s-monitoring
+    targetRevision: 1.6.38
+    helm:
+      valuesObject:
+        cluster:
+          name: devopsdays-dev
+
+        destinations:
+          - name: mimir
+            type: prometheus
+            url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/api/v1/push
+            extraHeaders:
+              X-Scope-OrgID: lab
+
+          - name: loki
+            type: loki
+            url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+            extraHeaders:
+              X-Scope-OrgID: lab
+
+          - name: tempo
+            type: otlp
+            url: http://tempo.monitoring.svc.cluster.local:4317
+            protocol: grpc
+
+        clusterMetrics:
+          enabled: true
+
+        clusterEvents:
+          enabled: true
+
+        podLogs:
+          enabled: true
+
+        alloy-metrics:
+          enabled: true
+          alloy:
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                memory: 512Mi
+            # Expose Alloy UI publicly via ingress
+            extraPorts:
+              - name: http-ui
+                port: 12345
+                targetPort: 12345
+                protocol: TCP
+
+        alloy-logs:
+          enabled: true
+          alloy:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

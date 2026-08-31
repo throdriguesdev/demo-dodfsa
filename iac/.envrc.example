@@ -1,0 +1,2 @@
+export TF_VAR_aws_profile="your-aws-profile"
+export TF_VAR_account_id="your-aws-account-id"
