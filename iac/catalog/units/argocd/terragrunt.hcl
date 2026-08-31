@@ -11,7 +11,7 @@ locals {
 }
 
 dependency "eks" {
-  config_path = "${get_repo_root()}/live/${local.environment}/${local.region}/compute/.terragrunt-stack/eks"
+  config_path = "${get_repo_root()}/iac/live/${local.environment}/${local.region}/compute/.terragrunt-stack/eks"
 
   mock_outputs = {
     cluster_name = "mock-cluster"
@@ -20,7 +20,7 @@ dependency "eks" {
 }
 
 dependency "eks_addons" {
-  config_path = "${get_repo_root()}/live/${local.environment}/${local.region}/compute/.terragrunt-stack/eks-addons"
+  config_path = "${get_repo_root()}/iac/live/${local.environment}/${local.region}/compute/.terragrunt-stack/eks-addons"
 
   mock_outputs = {
     namespace = "mock"

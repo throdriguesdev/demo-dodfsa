@@ -1,5 +1,5 @@
 locals {
-  units_path = "${get_repo_root()}/catalog/units"
+  units_path = "${get_repo_root()}/iac/catalog/units"
 }
 
 unit "eks" {

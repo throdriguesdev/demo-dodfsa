@@ -10,7 +10,7 @@ locals {
 }
 
 dependency "vpc" {
-  config_path = "${get_repo_root()}/live/${local.environment}/${local.region}/networking/.terragrunt-stack/vpc"
+  config_path = "${get_repo_root()}/iac/live/${local.environment}/${local.region}/networking/.terragrunt-stack/vpc"
 
   mock_outputs = {
     vpc_id             = "vpc-00000000000000000"

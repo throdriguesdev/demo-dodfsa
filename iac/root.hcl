@@ -51,6 +51,6 @@ generate "provider" {
 
 catalog {
   urls = [
-    "${get_repo_root()}/catalog"
+    "${get_repo_root()}/iac/catalog"
   ]
 }
