@@ -1,0 +1,50 @@
+cluster:
+  name: devopsdays-dev
+
+destinations:
+  - name: mimir
+    type: prometheus
+    url: http://mimir.monitoring.svc.cluster.local:8080/api/v1/push
+
+  - name: loki
+    type: loki
+    url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+
+  - name: tempo
+    type: otlp
+    url: http://tempo.monitoring.svc.cluster.local:4317
+    protocol: grpc
+
+clusterMetrics:
+  enabled: true
+
+clusterEvents:
+  enabled: true
+
+podLogs:
+  enabled: true
+
+alloy-metrics:
+  enabled: true
+  alloy:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+    extraPorts:
+      - name: http-ui
+        port: 12345
+        targetPort: 12345
+        protocol: TCP
+
+alloy-logs:
+  enabled: true
+  alloy:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi

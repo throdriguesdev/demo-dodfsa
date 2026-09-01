@@ -7,94 +7,25 @@ metadata:
     - resources-finalizer.argocd.io
 spec:
   project: default
-  source:
-    repoURL: https://grafana.github.io/helm-charts
-    chart: grafana
-    targetRevision: 8.8.2
-    helm:
-      valuesObject:
-        replicas: 1
-
-        persistence:
-          enabled: true
-          size: 5Gi
-
-        resources:
-          requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
-            memory: 512Mi
-
-        adminUser: admin
-        # Password pulled from the grafana-admin-secret K8s secret (created by ExternalSecret)
-        admin:
-          existingSecret: grafana-admin-secret
-          userKey: username
-          passwordKey: password
-
-        grafana.ini:
-          server:
-            root_url: https://grafana.lab.trdevops.com.br
-          auth:
-            disable_login_form: false
-
-        datasources:
-          datasources.yaml:
-            apiVersion: 1
-            datasources:
-              - name: Mimir
-                type: prometheus
-                uid: mimir
-                url: http://mimir.monitoring.svc.cluster.local:8080/prometheus
-                isDefault: true
-                jsonData:
-                  timeInterval: 60s
-
-              - name: Loki
-                type: loki
-                uid: loki
-                url: http://loki.monitoring.svc.cluster.local:3100
-                jsonData:
-                  maxLines: 1000
-
-              - name: Tempo
-                type: tempo
-                uid: tempo
-                url: http://tempo.monitoring.svc.cluster.local:3100
-                jsonData:
-                  tracesToLogsV2:
-                    datasourceUid: loki
-                  tracesToMetrics:
-                    datasourceUid: mimir
-                  serviceMap:
-                    datasourceUid: mimir
-                  nodeGraph:
-                    enabled: true
-
-        sidecar:
-          dashboards:
-            enabled: true
-            label: grafana_dashboard
-            labelValue: "1"
-            searchNamespace: ALL
-
-        ingress:
-          enabled: true
-          ingressClassName: alb
-          annotations:
-            alb.ingress.kubernetes.io/scheme: internet-facing
-            alb.ingress.kubernetes.io/target-type: ip
-            alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443},{"HTTP":80}]'
-            alb.ingress.kubernetes.io/ssl-redirect: "443"
-            cert-manager.io/cluster-issuer: letsencrypt-prod
-            external-dns.alpha.kubernetes.io/hostname: grafana.lab.trdevops.com.br
-          hosts:
-            - grafana.lab.trdevops.com.br
-          tls:
-            - secretName: grafana-tls
-              hosts:
-                - grafana.lab.trdevops.com.br
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: grafana
+      targetRevision: 8.8.2
+      helm:
+        valueFiles:
+          - $values/gitops/monitoring/grafana/values.yaml
+    - repoURL: https://github.com/throdriguesdev/demo-dodfsa.git
+      targetRevision: HEAD
+      ref: values
+    - repoURL: https://github.com/throdriguesdev/demo-dodfsa.git
+      targetRevision: HEAD
+      path: gitops/monitoring/grafana
+      directory:
+        recurse: false
+        include: "external-secret.yaml"
+    - repoURL: https://github.com/throdriguesdev/demo-dodfsa.git
+      targetRevision: HEAD
+      path: gitops/monitoring/grafana/dashboards
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -104,3 +35,10 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

@@ -7,46 +7,16 @@ metadata:
     - resources-finalizer.argocd.io
 spec:
   project: default
-  source:
-    repoURL: https://grafana.github.io/helm-charts
-    chart: tempo
-    targetRevision: 1.24.4
-    helm:
-      valuesObject:
-        replicas: 1
-
-        tempo:
-          storage:
-            trace:
-              backend: local
-              local:
-                path: /var/tempo/traces
-              wal:
-                path: /var/tempo/wal
-          receivers:
-            otlp:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:4317
-                http:
-                  endpoint: 0.0.0.0:4318
-            jaeger:
-              protocols:
-                thrift_http:
-                  endpoint: 0.0.0.0:14268
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              memory: 512Mi
-
-        persistence:
-          enabled: true
-          size: 10Gi
-
-        serviceMonitor:
-          enabled: false
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: tempo
+      targetRevision: 1.24.4
+      helm:
+        valueFiles:
+          - $values/gitops/monitoring/tempo/values.yaml
+    - repoURL: https://github.com/throdriguesdev/demo-dodfsa.git
+      targetRevision: HEAD
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -56,3 +26,10 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
