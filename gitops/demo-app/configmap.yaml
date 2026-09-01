@@ -4,7 +4,7 @@ metadata:
   name: app-env
   namespace: demo-app
 data:
-  OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy.monitoring.svc.cluster.local:4317"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://tempo.monitoring.svc.cluster.local:4317"
   OTEL_RESOURCE_ATTRIBUTES: "service.namespace=demo-app,deployment.environment=dev"
   SERVICE_VERSION: "1.0.0"
   DATABASE_URL: "postgresql://app:app@postgres.demo-app.svc.cluster.local:5432/appdb"
