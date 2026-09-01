@@ -9,7 +9,7 @@ unit "eks" {
     cluster_name       = "devopsdays-dev"
     kubernetes_version = "1.32"
     instance_types     = ["t3.medium"]
-    capacity_type      = "SPOT"
+    capacity_type      = "ON_DEMAND"
     node_min_size      = 2
     node_max_size      = 4
     node_desired_size  = 3
