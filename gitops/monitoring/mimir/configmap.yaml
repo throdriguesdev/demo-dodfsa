@@ -5,10 +5,7 @@ metadata:
   namespace: monitoring
 data:
   config.yaml: |
-    # Mimir standalone — single-binary demo mode
-    # For production, switch to mimir-distributed with S3 backend
     target: all,compactor
-
     multitenancy_enabled: false
 
     common:
@@ -26,7 +23,16 @@ data:
 
     ingester:
       ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: inmemory
         replication_factor: 1
+
+    distributor:
+      ring:
+        instance_addr: 127.0.0.1
+        kvstore:
+          store: inmemory
 
     store_gateway:
       sharding_ring:
@@ -51,16 +57,3 @@ data:
     server:
       http_listen_port: 8080
       grpc_listen_port: 9095
-
-    distributor:
-      ring:
-        instance_addr: 127.0.0.1
-        kvstore:
-          store: inmemory
-
-    ingester:
-      ring:
-        instance_addr: 127.0.0.1
-        kvstore:
-          store: inmemory
-        replication_factor: 1
