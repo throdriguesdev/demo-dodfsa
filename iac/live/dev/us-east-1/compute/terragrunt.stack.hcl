@@ -34,7 +34,8 @@ unit "argocd" {
   source = "${local.units_path}/argocd"
   path   = "argocd"
   values = {
-    ingress_host    = "argocd.lab.trdevops.com.br"
-    gitops_repo_url = "https://github.com/throdriguesdev/demo-dodfsa"
+    ingress_host        = "argocd.lab.trdevops.com.br"
+    gitops_repo_url     = "https://github.com/throdriguesdev/demo-dodfsa"
+    acm_certificate_arn = "arn:aws:acm:us-east-1:075472844803:certificate/333f2c4f-039b-47c9-822f-2e39a1462c81"
   }
 }
