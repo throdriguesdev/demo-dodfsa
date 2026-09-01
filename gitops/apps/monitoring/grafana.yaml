@@ -32,8 +32,8 @@ spec:
   ignoreDifferences:
     - group: external-secrets.io
       kind: ExternalSecret
-      jsonPointers:
-        - /metadata/annotations/refreshTime
+      managedFieldsManagers:
+        - external-secrets
   syncPolicy:
     automated:
       prune: true
