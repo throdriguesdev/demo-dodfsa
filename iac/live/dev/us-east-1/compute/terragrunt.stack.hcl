@@ -8,11 +8,11 @@ unit "eks" {
   values = {
     cluster_name       = "devopsdays-dev"
     kubernetes_version = "1.32"
-    instance_types     = ["t3.medium"]
+    instance_types     = ["m7i-flex.large"]
     capacity_type      = "ON_DEMAND"
     node_min_size      = 2
-    node_max_size      = 4
-    node_desired_size  = 3
+    node_max_size      = 3
+    node_desired_size  = 2
     authentication_mode = "API_AND_CONFIG_MAP"
   }
 }
