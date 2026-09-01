@@ -19,15 +19,11 @@ spec:
         destinations:
           - name: mimir
             type: prometheus
-            url: http://mimir-distributed-gateway.monitoring.svc.cluster.local/api/v1/push
-            extraHeaders:
-              X-Scope-OrgID: lab
+            url: http://mimir.monitoring.svc.cluster.local:8080/api/v1/push
 
           - name: loki
             type: loki
             url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
-            extraHeaders:
-              X-Scope-OrgID: lab
 
           - name: tempo
             type: otlp
