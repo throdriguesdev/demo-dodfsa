@@ -18,6 +18,13 @@ loki:
 
 singleBinary:
   replicas: 1
+
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
   persistence:
     enabled: true
     size: 20Gi
