@@ -21,7 +21,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: alloy-metrics
+                name: alloy
                 port:
                   number: 12345
   tls:
