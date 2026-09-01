@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud
+  namespace: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fraud
+  template:
+    metadata:
+      labels:
+        app: fraud
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9094"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: fraud
+          image: 075472844803.dkr.ecr.us-east-1.amazonaws.com/demo-grafana-fraud:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9094
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: fraud-service
+          envFrom:
+            - configMapRef:
+                name: app-env
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud
+  namespace: demo-app
+spec:
+  selector:
+    app: fraud
+  ports:
+    - port: 9094
+      targetPort: 9094

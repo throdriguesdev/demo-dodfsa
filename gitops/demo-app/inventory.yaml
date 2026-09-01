@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+  namespace: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory
+  template:
+    metadata:
+      labels:
+        app: inventory
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9093"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: inventory
+          image: 075472844803.dkr.ecr.us-east-1.amazonaws.com/demo-grafana-inventory:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9093
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: inventory-service
+          envFrom:
+            - configMapRef:
+                name: app-env
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory
+  namespace: demo-app
+spec:
+  selector:
+    app: inventory
+  ports:
+    - port: 9093
+      targetPort: 9093

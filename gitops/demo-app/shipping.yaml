@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping
+  namespace: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shipping
+  template:
+    metadata:
+      labels:
+        app: shipping
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9095"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: shipping
+          image: 075472844803.dkr.ecr.us-east-1.amazonaws.com/demo-grafana-shipping:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9095
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: shipping-service
+          envFrom:
+            - configMapRef:
+                name: app-env
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipping
+  namespace: demo-app
+spec:
+  selector:
+    app: shipping
+  ports:
+    - port: 9095
+      targetPort: 9095

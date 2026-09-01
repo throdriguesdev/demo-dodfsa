@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification
+  namespace: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification
+  template:
+    metadata:
+      labels:
+        app: notification
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: notification
+          image: 075472844803.dkr.ecr.us-east-1.amazonaws.com/demo-grafana-notification:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9091
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: notification-service
+          envFrom:
+            - configMapRef:
+                name: app-env
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification
+  namespace: demo-app
+spec:
+  selector:
+    app: notification
+  ports:
+    - port: 9091
+      targetPort: 9091

@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-agent
+  namespace: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-agent
+  template:
+    metadata:
+      labels:
+        app: order-agent
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9096"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: order-agent
+          image: 075472844803.dkr.ecr.us-east-1.amazonaws.com/demo-grafana-order-agent:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9096
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: order-agent
+            - name: ORDER_AGENT_PERSONAS_CONCURRENT
+              value: "1"
+            - name: ORDER_AGENT_CYCLE_DELAY_SECONDS
+              value: "60"
+          envFrom:
+            - configMapRef:
+                name: app-env
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-agent
+  namespace: demo-app
+spec:
+  selector:
+    app: order-agent
+  ports:
+    - port: 9096
+      targetPort: 9096
