@@ -5,8 +5,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    # Replace with your email — used for Let's Encrypt expiry notifications
-    email: acme@example.com
+    email: thdasrodrigues@gmail.com
     privateKeySecretRef:
       name: letsencrypt-prod-key
     solvers:
