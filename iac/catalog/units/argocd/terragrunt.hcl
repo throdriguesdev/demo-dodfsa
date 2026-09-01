@@ -51,7 +51,7 @@ generate "helm_provider" {
 }
 
 terraform {
-  source = "git::https://github.com/throdriguesdev/terraform-aws.git//catalog/modules/argocd?ref=v1.0.0"
+  source = "git::https://github.com/throdriguesdev/terraform-aws.git//catalog/modules/argocd?ref=v1.0.1"
 }
 
 inputs = {
