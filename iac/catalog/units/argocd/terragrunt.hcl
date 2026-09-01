@@ -51,12 +51,13 @@ generate "helm_provider" {
 }
 
 terraform {
-  source = "git::https://github.com/throdriguesdev/terraform-aws.git//catalog/modules/argocd?ref=v1.0.1"
+  source = "git::https://github.com/throdriguesdev/terraform-aws.git//catalog/modules/argocd?ref=v1.0.2"
 }
 
 inputs = {
-  cluster_name    = dependency.eks.outputs.cluster_name
-  ingress_host    = try(values.ingress_host, "argocd.lab.trdevops.com.br")
-  chart_version   = try(values.chart_version, "7.7.3")
-  gitops_repo_url = try(values.gitops_repo_url, "")
+  cluster_name        = dependency.eks.outputs.cluster_name
+  ingress_host        = try(values.ingress_host, "argocd.lab.trdevops.com.br")
+  chart_version       = try(values.chart_version, "7.7.3")
+  gitops_repo_url     = try(values.gitops_repo_url, "")
+  acm_certificate_arn = try(values.acm_certificate_arn, "")
 }
