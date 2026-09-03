@@ -7,7 +7,7 @@ unit "eks" {
   path   = "eks"
   values = {
     cluster_name       = "devopsdays-dev"
-    kubernetes_version = "1.32"
+    kubernetes_version = "1.34"
     instance_types     = ["m7i-flex.large"]
     capacity_type      = "ON_DEMAND"
     node_min_size      = 2

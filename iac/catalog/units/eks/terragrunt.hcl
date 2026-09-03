@@ -25,7 +25,7 @@ terraform {
 
 inputs = {
   cluster_name              = values.cluster_name
-  kubernetes_version        = try(values.kubernetes_version, "1.32")
+  kubernetes_version        = try(values.kubernetes_version, "1.34")
   vpc_id                    = dependency.vpc.outputs.vpc_id
   subnet_ids                = dependency.vpc.outputs.private_subnet_ids
   instance_types            = try(values.instance_types, ["t3.medium"])
