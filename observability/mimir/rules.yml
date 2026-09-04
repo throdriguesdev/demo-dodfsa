@@ -1,0 +1,18 @@
+groups:
+  - name: lgtm_demo
+    interval: 15s
+    rules:
+      - record: job:orders_created:rate5m
+        expr: sum(rate(orders_created_total[5m])) by (product)
+      - record: job:orders_revenue:rate5m
+        expr: sum(rate(orders_revenue_total[5m]))
+      - record: job:order_processing_duration:p95
+        expr: histogram_quantile(0.95, sum(rate(order_processing_duration_seconds_bucket[5m])) by (le))
+      - record: job:cache_hit_ratio
+        expr: sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))
+      - record: job:fraud_rejection_rate
+        expr: sum(rate(fraud_checks_total{decision="rejected"}[5m])) / sum(rate(fraud_checks_total[5m]))
+      - record: job:payment_decline_rate
+        expr: sum(rate(payment_gateway_requests_total{status="declined"}[5m])) / sum(rate(payment_gateway_requests_total[5m]))
+      - record: job:shipping_latency:p95
+        expr: histogram_quantile(0.95, sum(rate(shipping_latency_seconds_bucket[5m])) by (le))

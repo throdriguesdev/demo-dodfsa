@@ -1,0 +1,377 @@
+services:
+  # ===========================================================================
+  # LGTM Stack
+  # ===========================================================================
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_FEATURE_TOGGLES_ENABLE=traceToLogs,traceToMetrics,correlations,traceqlSearch
+      - GF_INSTALL_PLUGINS=grafana-exploretraces-app
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - mimir
+      - loki
+      - tempo
+
+  mimir:
+    image: grafana/mimir:latest
+    container_name: mimir
+    command:
+      - -config.file=/etc/mimir/mimir.yml
+    ports:
+      - "9009:9009"
+    volumes:
+      - ./observability/mimir/mimir.yml:/etc/mimir/mimir.yml
+      - ./observability/mimir/rules.yml:/data/mimir/rules/anonymous/rules.yml
+      - mimir-data:/data
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command:
+      - -config.file=/etc/loki/loki.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki.yml:/etc/loki/loki.yml
+      - loki-data:/loki
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: tempo
+    command:
+      - -config.file=/etc/tempo/tempo.yml
+    ports:
+      - "3200:3200"   # tempo API
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml
+      - tempo-data:/var/tempo
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --stability.level=generally-available
+    ports:
+      - "12345:12345"
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - mimir
+      - loki
+      - tempo
+
+  # ===========================================================================
+  # Application Stack
+  # ===========================================================================
+
+  api:
+    build: ./services/api
+    container_name: api
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://app:app@postgres:5432/appdb
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_SERVICE_NAME=demo-api
+      - OTEL_RESOURCE_ATTRIBUTES=service.namespace=lgtm-demo,deployment.environment=demo
+      - SERVICE_VERSION=1.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      alloy:
+        condition: service_started
+    labels:
+      - "logging=loki"
+
+  order-worker:
+    build: ./services/worker
+    container_name: order-worker
+    ports:
+      - "9090:9090"
+    environment:
+      - DATABASE_URL=postgresql://app:app@postgres:5432/appdb
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_SERVICE_NAME=order-worker
+      - OTEL_RESOURCE_ATTRIBUTES=service.namespace=lgtm-demo,deployment.environment=demo
+      - SERVICE_VERSION=1.0.0
+      - API_URL=http://api:8080
+      - FRAUD_URL=http://fraud-service:9094
+      - INVENTORY_URL=http://inventory-service:9093
+      - PAYMENT_URL=http://payment-gateway:9092
+      - NOTIFICATION_URL=http://notification-service:9091
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      alloy:
+        condition: service_started
+      fraud-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+      payment-gateway:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    labels:
+      - "logging=loki"
+
+  # ===========================================================================
+  # Microservices
+  # ===========================================================================
+
+  notification-service:
+    build: ./services/notification
+    container_name: notification-service
+    ports:
+      - "9091:9091"
+    environment:
+      - DATABASE_URL=postgresql://app:app@postgres:5432/appdb
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_SERVICE_NAME=notification-service
+      - SERVICE_VERSION=1.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      alloy:
+        condition: service_started
+    labels:
+      - "logging=loki"
+
+  payment-gateway:
+    build: ./services/payment-gateway
+    container_name: payment-gateway
+    ports:
+      - "9092:9092"
+    environment:
+      - DATABASE_URL=postgresql://app:app@postgres:5432/appdb
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_SERVICE_NAME=payment-gateway
+      - SERVICE_VERSION=1.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      alloy:
+        condition: service_started
+    labels:
+      - "logging=loki"
+
+  inventory-service:
+    build: ./services/inventory
+    container_name: inventory-service
+    ports:
+      - "9093:9093"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_SERVICE_NAME=inventory-service
+      - SERVICE_VERSION=1.0.0
+    depends_on:
+      redis:
+        condition: service_started
+      alloy:
+        condition: service_started
+    labels:
+      - "logging=loki"
+
+  fraud-service:
+    build: ./services/fraud
+    container_name: fraud-service
+    ports:
+      - "9094:9094"
+    environment:
+      - DATABASE_URL=postgresql://app:app@postgres:5432/appdb
+      - REDIS_URL=redis://redis:6379
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_SERVICE_NAME=fraud-service
+      - SERVICE_VERSION=1.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      alloy:
+        condition: service_started
+    labels:
+      - "logging=loki"
+
+  shipping-service:
+    build: ./services/shipping
+    container_name: shipping-service
+    ports:
+      - "9095:9095"
+    environment:
+      - DATABASE_URL=postgresql://app:app@postgres:5432/appdb
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_SERVICE_NAME=shipping-service
+      - SERVICE_VERSION=1.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      alloy:
+        condition: service_started
+      api:
+        condition: service_started
+    labels:
+      - "logging=loki"
+
+  order-agent:
+    build: ./services/order-agent
+    container_name: order-agent
+    ports:
+      - "9096:9096"
+    environment:
+      - API_URL=http://api:8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4317
+      - OTEL_SERVICE_NAME=order-agent
+      - SERVICE_VERSION=1.0.0
+      - ORDER_AGENT_PERSONAS_CONCURRENT=1
+      - ORDER_AGENT_CYCLE_DELAY_SECONDS=300
+    depends_on:
+      - api
+      - order-worker
+      - alloy
+    labels:
+      - "logging=loki"
+
+  # ===========================================================================
+  # Infrastructure
+  # ===========================================================================
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+      - POSTGRES_DB=appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://app:app@postgres:5432/appdb?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter:latest
+    container_name: rabbitmq-exporter
+    environment:
+      - RABBIT_URL=http://rabbitmq:15672
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
+    ports:
+      - "9419:9419"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    ports:
+      - "9100:9100"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8081:8080"
+
+volumes:
+  mimir-data:
+  loki-data:
+  tempo-data:
+  rabbitmq-data:
+  postgres-data:
+  grafana-data:

@@ -1,0 +1,254 @@
+// =============================================================================
+// Alloy Configuration — LGTM Stack Demo
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// METRICS: Scrape targets and remote write to Mimir
+// -----------------------------------------------------------------------------
+
+prometheus.scrape "postgres_exporter" {
+  targets = [{
+    __address__ = "postgres-exporter:9187",
+    job         = "postgres",
+  }]
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "redis_exporter" {
+  targets = [{
+    __address__ = "redis-exporter:9121",
+    job         = "redis",
+  }]
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "alloy_self" {
+  targets = [{
+    __address__ = "localhost:12345",
+    job         = "alloy",
+  }]
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "rabbitmq_exporter" {
+  targets = [{
+    __address__ = "rabbitmq-exporter:9419",
+    job         = "rabbitmq",
+  }]
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "demo_api" {
+  targets = [{
+    __address__ = "api:8080",
+    job         = "demo-api",
+  }]
+  metrics_path    = "/metrics"
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+  enable_protobuf_negotiation = true
+}
+
+prometheus.scrape "order_worker" {
+  targets = [{
+    __address__ = "order-worker:9090",
+    job         = "order-worker",
+  }]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "notification_service" {
+  targets = [{
+    __address__ = "notification-service:9091",
+    job         = "notification-service",
+  }]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "payment_gateway" {
+  targets = [{
+    __address__ = "payment-gateway:9092",
+    job         = "payment-gateway",
+  }]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "inventory_service" {
+  targets = [{
+    __address__ = "inventory-service:9093",
+    job         = "inventory-service",
+  }]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "fraud_service" {
+  targets = [{
+    __address__ = "fraud-service:9094",
+    job         = "fraud-service",
+  }]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "shipping_service" {
+  targets = [{
+    __address__ = "shipping-service:9095",
+    job         = "shipping-service",
+  }]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "order_agent" {
+  targets = [{
+    __address__ = "order-agent:9096",
+    job         = "order-agent",
+  }]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "node_exporter" {
+  targets = [{
+    __address__ = "node-exporter:9100",
+    job         = "node",
+  }]
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.scrape "cadvisor" {
+  targets = [{
+    __address__ = "cadvisor:8080",
+    job         = "cadvisor",
+  }]
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+
+// -----------------------------------------------------------------------------
+// LOGS: Collect Docker container logs and push to Loki
+// -----------------------------------------------------------------------------
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_logs" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "container"
+    regex         = "/(.*)"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "service_name"
+    regex         = "/(.*)"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker_logs.output
+  forward_to = [loki.process.add_labels.receiver]
+}
+
+loki.process "add_labels" {
+  stage.docker {}
+
+  // Parse JSON fields from app logs (all services emit structlog JSON)
+  stage.json {
+    expressions = {
+      level         = "level",
+      trace_id      = "trace_id",
+      span_id       = "span_id",
+      customer_name = "customer_name",
+    }
+  }
+
+  // Promote level to a Loki label — enables {level="error"} queries without | json
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  // Store trace_id + customer_name as structured metadata — indexed, fast queries
+  stage.structured_metadata {
+    values = {
+      trace_id      = "",
+      span_id       = "",
+      customer_name = "",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      cluster = "lgtm-demo",
+    }
+  }
+
+  // Drop noisy /health healthcheck logs
+  stage.match {
+    selector = "{container=\"api\"} |= \"/health\""
+    action   = "drop"
+  }
+
+  forward_to = [loki.write.loki.receiver]
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// -----------------------------------------------------------------------------
+// TRACES: Receive OTLP and forward to Tempo
+// -----------------------------------------------------------------------------
+
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+}

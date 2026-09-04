@@ -1,0 +1,14 @@
+pika==1.3.2
+psycopg2-binary==2.9.9
+redis==5.0.8
+requests==2.32.3
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-exporter-otlp==1.27.0
+opentelemetry-instrumentation-psycopg2==0.48b0
+opentelemetry-instrumentation-redis==0.48b0
+opentelemetry-instrumentation-requests==0.48b0
+opentelemetry-instrumentation-logging==0.48b0
+structlog==24.4.0
+prometheus-client==0.21.0
+setuptools<81

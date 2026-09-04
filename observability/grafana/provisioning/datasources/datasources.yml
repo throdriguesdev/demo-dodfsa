@@ -1,0 +1,58 @@
+apiVersion: 1
+
+datasources:
+  - name: Mimir
+    type: prometheus
+    access: proxy
+    url: http://mimir:9009/prometheus
+    isDefault: true
+    uid: mimir
+    jsonData:
+      httpMethod: POST
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    uid: loki
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - name: TraceID
+          matcherRegex: '"trace_id":\s*"(\w+)"'
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          matcherType: regex
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    uid: tempo
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        filterByTraceID: false
+        filterBySpanID: false
+        customQuery: true
+        query: '{cluster="lgtm-demo"} | json | trace_id = `$${__span.traceId}`'
+      tracesToMetrics:
+        datasourceUid: mimir
+        spanStartTimeShift: "-1h"
+        spanEndTimeShift: "1h"
+        tags:
+          - key: service.name
+            value: service
+        queries:
+          - name: "Request Rate"
+            query: "sum(rate(traces_spanmetrics_calls_total{service=\"$${__tags.service}\"}[5m]))"
+          - name: "Error Rate"
+            query: "sum(rate(traces_spanmetrics_calls_total{service=\"$${__tags.service}\",status_code=\"STATUS_CODE_ERROR\"}[5m]))"
+          - name: "p95 Latency"
+            query: "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"$${__tags.service}\"}[5m])) by (le))"
+      serviceMap:
+        datasourceUid: mimir
+      nodeGraph:
+        enabled: true
+      lokiSearch:
+        datasourceUid: loki
