@@ -5,7 +5,7 @@ CLUSTER=devopsdays-dev
 PROFILE=${AWS_PROFILE:-th}
 REGION=us-east-1
 
-echo "Scaling up $CLUSTER node group to 2..."
+echo "Scaling up $CLUSTER node group to 3 (one per AZ — stack has EBS volumes in 1a/1b/1c)..."
 NG=$(aws eks list-nodegroups --cluster-name "$CLUSTER" --region "$REGION" --profile "$PROFILE" \
   --query 'nodegroups[0]' --output text)
 
@@ -14,7 +14,7 @@ aws eks update-nodegroup-config \
   --nodegroup-name "$NG" \
   --region "$REGION" \
   --profile "$PROFILE" \
-  --scaling-config minSize=2,maxSize=3,desiredSize=2
+  --scaling-config minSize=3,maxSize=3,desiredSize=3
 
 echo "Waiting for nodes to be ready..."
 aws eks wait nodegroup-active \

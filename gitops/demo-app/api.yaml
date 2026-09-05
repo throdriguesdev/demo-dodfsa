@@ -16,6 +16,10 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
+        k8s.grafana.com/scrape: "true"
+        k8s.grafana.com/job: "demo-api"
+        k8s.grafana.com/metrics.portNumber: "8080"
+        k8s.grafana.com/metrics.path: "/metrics"
     spec:
       containers:
         - name: api

@@ -16,6 +16,10 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
+        k8s.grafana.com/scrape: "true"
+        k8s.grafana.com/job: "order-worker"
+        k8s.grafana.com/metrics.portNumber: "9090"
+        k8s.grafana.com/metrics.path: "/metrics"
     spec:
       containers:
         - name: order-worker

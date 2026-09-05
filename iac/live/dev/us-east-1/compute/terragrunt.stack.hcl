@@ -10,9 +10,9 @@ unit "eks" {
     kubernetes_version = "1.34"
     instance_types     = ["m7i-flex.large"]
     capacity_type      = "ON_DEMAND"
-    node_min_size      = 2
+    node_min_size      = 3
     node_max_size      = 3
-    node_desired_size  = 2
+    node_desired_size  = 3
     authentication_mode = "API_AND_CONFIG_MAP"
   }
 }

@@ -16,6 +16,10 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9091"
         prometheus.io/path: "/metrics"
+        k8s.grafana.com/scrape: "true"
+        k8s.grafana.com/job: "notification-service"
+        k8s.grafana.com/metrics.portNumber: "9091"
+        k8s.grafana.com/metrics.path: "/metrics"
     spec:
       containers:
         - name: notification

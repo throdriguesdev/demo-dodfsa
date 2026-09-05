@@ -16,6 +16,10 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9092"
         prometheus.io/path: "/metrics"
+        k8s.grafana.com/scrape: "true"
+        k8s.grafana.com/job: "payment-gateway"
+        k8s.grafana.com/metrics.portNumber: "9092"
+        k8s.grafana.com/metrics.path: "/metrics"
     spec:
       containers:
         - name: payment-gateway
