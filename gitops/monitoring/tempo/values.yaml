@@ -22,9 +22,25 @@ tempo:
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
-    limits:
       memory: 512Mi
+    limits:
+      memory: 1Gi
+  # Metrics generator: powers Service Graph, span RED metrics, and TraceQL
+  # metrics (rate()/quantile_over_time via the local-blocks processor).
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://mimir.monitoring.svc.cluster.local:8080/api/v1/push"
+    processor:
+      local_blocks:
+        flush_to_storage: true
+        filter_server_spans: false
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+          - local-blocks
 
 persistence:
   enabled: true
