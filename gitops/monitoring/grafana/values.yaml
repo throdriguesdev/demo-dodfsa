@@ -21,7 +21,14 @@ grafana.ini:
   server:
     root_url: https://grafana.lab.trdevops.com.br
   auth:
+    # keep the login form so you can still sign in as admin during the demo
     disable_login_form: false
+  # public access: anyone with the URL gets full interactive access, no login
+  auth.anonymous:
+    enabled: true
+    org_name: Main Org.
+    org_role: Editor
+    hide_version: true
 
 datasources:
   datasources.yaml:
